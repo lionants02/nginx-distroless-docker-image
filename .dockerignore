@@ -1,0 +1,10 @@
+.git
+.env
+.test-work
+reports
+ssl
+ca
+requirement.md
+TASK.md
+nginx-conf/conf.d/*.local.conf
+nginx-conf/stream.d/*.local.conf

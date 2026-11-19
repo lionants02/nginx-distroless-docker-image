@@ -1,0 +1,14 @@
+.env
+reports/
+.test-work/
+__pycache__/
+ssl/*
+!ssl/.gitkeep
+ca/*
+!ca/.gitkeep
+nginx-conf/conf.d/*.local.conf
+nginx-conf/stream.d/*.local.conf
+nginx-conf/ssl/*
+!nginx-conf/ssl/.gitkeep
+nginx-conf/ca/*
+!nginx-conf/ca/.gitkeep
