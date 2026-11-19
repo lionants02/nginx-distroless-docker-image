@@ -1,0 +1,25 @@
+services:
+  nginx:
+    image: ${NGINX_IMAGE:-ghcr.io/lionants02/nginx-distroless-docker-image:latest}
+    platform: linux/amd64
+    restart: unless-stopped
+    user: "65532:65532"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: ${TZ:-Asia/Bangkok}
+    ports:
+      - "80:8080"
+    volumes:
+      - ./nginx-conf:/etc/nginx:ro
+      - ./static-html:/usr/share/nginx/html:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./ca:/etc/nginx/ca:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    extra_hosts:
+      - "mock-upstream.example:192.0.2.10"
+    stop_grace_period: 30s

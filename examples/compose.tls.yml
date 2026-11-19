@@ -1,0 +1,7 @@
+# Enable the matching .conf.example before starting this override.
+services:
+  nginx:
+    ports:
+      - "443:8443"
+      # Uncomment only when enabling the HTTP/3 example:
+      # - "443:8443/udp"

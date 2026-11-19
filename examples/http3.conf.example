@@ -1,0 +1,13 @@
+# Use instead of the HTTPS example, and publish 443:8443/udp as well as TCP.
+server {
+    listen 8443 ssl;
+    listen 8443 quic reuseport;
+    http2 on;
+    server_name localhost;
+    ssl_certificate /etc/nginx/ssl/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Alt-Svc 'h3=":443"; ma=86400' always;
+    root /usr/share/nginx/html;
+    index index.html;
+}

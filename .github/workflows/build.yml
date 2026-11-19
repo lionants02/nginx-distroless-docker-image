@@ -1,0 +1,76 @@
+name: Build, scan and publish
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ghcr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Initialize reports
+        run: mkdir -p reports
+      - name: Resolve and validate image tag
+        id: ref
+        run: python3 ci/image_ref.py 2> >(tee reports/image-ref.log >&2)
+      - name: Validate Compose and CI rules
+        run: |
+          docker compose config --quiet
+          python3 -m unittest discover -s tests -p 'test_ci.py' -v 2>&1 | tee reports/ci-tests.log
+      - name: Build runtime image once
+        run: |
+          set -o pipefail
+          docker build --platform linux/amd64 --progress plain -t nginx-distroless:ci . 2>&1 | tee reports/build.log
+      - name: Scan Dockerfile and runtime image
+        id: scan
+        if: ${{ !cancelled() && steps.ref.outcome == 'success' }}
+        run: bash ci/scan.sh nginx-distroless:ci
+      - name: Test actual protocols and runtime restrictions
+        if: ${{ !cancelled() && steps.ref.outcome == 'success' }}
+        run: |
+          set -o pipefail
+          docker build -f tests/Dockerfile -t nginx-distroless-test-tools:local . 2>&1 | tee reports/test-tools-build.log
+          python3 tests/runtime.py nginx-distroless:ci 2>&1 | tee reports/runtime-tests.log
+      - name: Publish the scanned image
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ${{ steps.ref.outputs.image }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag nginx-distroless:ci "$IMAGE"
+          docker push "$IMAGE" | tee reports/push.log
+      - name: Write workflow summary
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          printf 'Workflow result: **%s**\n\n' "$RESULT" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f reports/scan-summary.md ]; then cat reports/scan-summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+          printf '\nReports: this run → Artifacts → security-reports-%s (30 days).\n' "$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload reports even on failure
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: security-reports-${{ github.run_id }}
+          path: reports/
+          retention-days: 30
+          if-no-files-found: error

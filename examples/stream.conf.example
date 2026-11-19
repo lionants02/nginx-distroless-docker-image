@@ -1,0 +1,5 @@
+# Copy to nginx-conf/stream.d/tcp.local.conf and publish a matching TCP port.
+server {
+    listen 9000;
+    proxy_pass backend.example:9000;
+}

@@ -1,0 +1,16 @@
+# Copy to nginx-conf/conf.d/proxy.local.conf and replace the example hostname.
+server {
+    listen 8080;
+    server_name proxy.example;
+    location / {
+        proxy_pass https://backend.example;
+        proxy_set_header Host backend.example;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        # PEM file containing the CAs needed by this upstream.
+        # Use /etc/ssl/certs/ca-certificates.crt for public CAs only.
+        proxy_ssl_trusted_certificate /etc/nginx/ca/ca-bundle.pem;
+    }
+}
